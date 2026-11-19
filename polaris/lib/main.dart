@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'data/auth_api.dart';
 import 'data/celestial_object_repository.dart';
+import 'data/http_celestial_object_repository.dart';
 import 'data/mock_celestial_object_repository.dart';
 import 'data/mock_telescope_repository.dart';
 import 'data/telescope_repository.dart';
@@ -20,14 +21,21 @@ Future<void> main() async {
   final loggedIn = await tokens.read() != null;
   final auth = AuthApi('http://localhost:8080', tokens);
   app_router.initializeRouter(loggedIn: loggedIn);
-  final repository = MockCelestialObjectRepository();
+  final mockRepository = MockCelestialObjectRepository();
+  final repository = HttpCelestialObjectRepository(
+    'http://localhost:8080',
+    tokens,
+    onUnauthorized: () {
+      app_router.router.go('/login');
+    },
+  );
 
   runApp(
     MultiProvider(
       providers: [
         Provider<TokenStore>.value(value: tokens),
         Provider<AuthApi>.value(value: auth),
-        Provider<MockCelestialObjectRepository>.value(value: repository),
+        Provider<MockCelestialObjectRepository>.value(value: mockRepository),
         Provider<CelestialObjectRepository>.value(value: repository),
         Provider<TelescopeRepository>(create: (_) => MockTelescopeRepository()),
         ChangeNotifierProvider(
