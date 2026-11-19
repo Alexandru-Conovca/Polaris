@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'data/auth_api.dart';
 import 'data/celestial_object_repository.dart';
 import 'data/http_celestial_object_repository.dart';
-import 'data/mock_celestial_object_repository.dart';
 import 'data/mock_telescope_repository.dart';
 import 'data/telescope_repository.dart';
 import 'data/token_store.dart';
@@ -14,19 +14,33 @@ import 'models/favorites_model.dart';
 import 'models/telescope_model.dart';
 import 'router.dart' as app_router;
 
+const _definedApiBase = String.fromEnvironment('API_BASE');
+
+String get apiBase {
+  if (_definedApiBase.isNotEmpty) {
+    return _definedApiBase;
+  }
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    return 'http://10.0.2.2:8080';
+  }
+  return 'http://localhost:8080';
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final tokens = TokenStore();
   final loggedIn = await tokens.read() != null;
-  final auth = AuthApi('http://localhost:8080', tokens);
+  final auth = AuthApi(apiBase, tokens);
   app_router.initializeRouter(loggedIn: loggedIn);
-  final mockRepository = MockCelestialObjectRepository();
   final repository = HttpCelestialObjectRepository(
-    'http://localhost:8080',
+    apiBase,
     tokens,
     onUnauthorized: () {
-      app_router.router.go('/login');
+      final uri = app_router.router.routeInformationProvider.value.uri;
+      if (uri.path != '/login') {
+        app_router.router.go('/login');
+      }
     },
   );
 
@@ -35,7 +49,6 @@ Future<void> main() async {
       providers: [
         Provider<TokenStore>.value(value: tokens),
         Provider<AuthApi>.value(value: auth),
-        Provider<MockCelestialObjectRepository>.value(value: mockRepository),
         Provider<CelestialObjectRepository>.value(value: repository),
         Provider<TelescopeRepository>(create: (_) => MockTelescopeRepository()),
         ChangeNotifierProvider(

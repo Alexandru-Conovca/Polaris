@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../data/auth_api.dart';
 import '../data/app_data.dart';
-import '../data/mock_celestial_object_repository.dart';
 import '../widgets/observation_tile.dart';
 import '../widgets/quest_card.dart';
 
@@ -53,8 +52,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _simulateNetworkError = false;
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -109,22 +106,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 28),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Симулировать сбой сети'),
-            subtitle: const Text(
-              'Включите, чтобы проверить экран ошибки и повторную загрузку.',
-            ),
-            value: _simulateNetworkError,
-            onChanged: (value) {
-              setState(() {
-                _simulateNetworkError = value;
-              });
-              context.read<MockCelestialObjectRepository>().simulateError =
-                  value;
-            },
-          ),
-          const SizedBox(height: 12),
           Card(
             child: ListTile(
               leading: const Icon(Icons.settings_outlined),
