@@ -11,7 +11,16 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from . import auth, files, notes  # importing app.db inside them creates app.db
+from . import (
+    auth,
+    celestial_objects,
+    favorites,
+    files,
+    notes,
+    observations,
+    quests,
+    telescopes,
+)
 from .errors import ApiError, json_response
 
 app = FastAPI(title="PAM Backend Template", docs_url=None, redoc_url=None)
@@ -26,6 +35,11 @@ async def health():
 app.include_router(auth.router)
 app.include_router(notes.router)
 app.include_router(files.router)
+app.include_router(celestial_objects.router)
+app.include_router(quests.router)
+app.include_router(telescopes.router)
+app.include_router(observations.router)
+app.include_router(favorites.router)
 
 # Permissive CORS so a Flutter *web* build can call the API during the labs.
 app.add_middleware(

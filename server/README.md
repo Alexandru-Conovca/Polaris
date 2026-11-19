@@ -46,6 +46,11 @@ app/main.py    — pornire: env, înregistrarea rutelor, CORS, forma erorilor
 app/db.py      — schema SQLite, aplicată automat la pornire
 app/auth.py    — register/login/me, parole bcrypt, JWT (HS256, PyJWT)
 app/notes.py   — entitatea-exemplu: CRUD + paginare + căutare
+app/celestial_objects.py — catalogul comun de obiecte cerești
+app/quests.py  — quest-uri educaționale comune
+app/telescopes.py — telescoapele utilizatorului
+app/observations.py — observațiile utilizatorului și legăturile tematice
+app/favorites.py — legătura many-to-many dintre utilizatori și obiecte
 app/files.py   — upload multipart (parser scris de mână), download binar
 app/errors.py  — forma standard a erorilor + helper-e JSON
 ```
@@ -77,3 +82,19 @@ ascuns într-o bibliotecă.
 4. Repornește, testează cu `curl` sau cu aplicația ta Flutter, apoi
    re-rulează suita de conformitate ca să confirmi că restul contractului
    încă trece.
+
+## Entitățile Polaris
+
+Pe lângă `notes`, backend-ul include entitățile tematice:
+
+- `/celestial-objects` — catalog comun: CRUD, paginare și căutare.
+- `/quests` — quest-uri educaționale comune: CRUD, paginare și căutare.
+- `/telescopes` — telescoape ale utilizatorului: CRUD, paginare și căutare.
+- `/observations` — observații legate de obiect, quest și opțional telescop.
+- `/favorites` — legătura many-to-many dintre utilizatori și obiecte cerești.
+
+Toate rutele tematice cer același `Authorization: Bearer <token>` ca
+`/notes`. Obiectele cerești și quest-urile sunt comune; telescoapele,
+observațiile și favoritele sunt izolate pe utilizator. `app.db` trebuie șters
+manual când se modifică coloanele unei tabele, deoarece proiectul folosește
+`CREATE TABLE IF NOT EXISTS`, nu migrații.

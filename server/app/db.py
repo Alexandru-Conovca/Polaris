@@ -37,6 +37,56 @@ CREATE TABLE IF NOT EXISTS files (
   path       TEXT    NOT NULL,
   created_at TEXT    NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS celestial_objects (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  name            TEXT    NOT NULL,
+  type            TEXT    NOT NULL,
+  description     TEXT    NOT NULL DEFAULT '',
+  magnitude       REAL    NOT NULL,
+  coordinates     TEXT    NOT NULL,
+  constellation   TEXT    NOT NULL,
+  is_visible_now  INTEGER NOT NULL DEFAULT 0,
+  created_at      TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS quests (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  title        TEXT    NOT NULL,
+  description  TEXT    NOT NULL DEFAULT '',
+  difficulty   TEXT    NOT NULL,
+  tasks_count  INTEGER NOT NULL,
+  created_at   TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS telescopes (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id       INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  name          TEXT    NOT NULL,
+  aperture      INTEGER NOT NULL,
+  focal_length  INTEGER NOT NULL,
+  mount_type    TEXT    NOT NULL,
+  created_at    TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS observations (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id             INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  celestial_object_id INTEGER NOT NULL REFERENCES celestial_objects (id),
+  quest_id            INTEGER NOT NULL REFERENCES quests (id),
+  telescope_id        INTEGER REFERENCES telescopes (id) ON DELETE SET NULL,
+  observed_at         TEXT    NOT NULL,
+  location            TEXT    NOT NULL,
+  status              TEXT    NOT NULL,
+  created_at          TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS favorites (
+  user_id             INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  celestial_object_id INTEGER NOT NULL REFERENCES celestial_objects (id) ON DELETE CASCADE,
+  created_at          TEXT    NOT NULL,
+  PRIMARY KEY (user_id, celestial_object_id)
+);
 """
 
 # The single database connection, opened (and the schema applied) at import
@@ -48,6 +98,7 @@ conn = sqlite3.connect(
     BASE_DIR / "app.db", check_same_thread=False, isolation_level=None
 )
 conn.row_factory = sqlite3.Row  # rows behave like dicts: row["title"]
+conn.execute("PRAGMA foreign_keys = ON")
 conn.executescript(_SCHEMA)
 
 
