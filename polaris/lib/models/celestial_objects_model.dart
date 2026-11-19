@@ -10,12 +10,24 @@ class CelestialObjectsModel extends ChangeNotifier {
   final CelestialObjectRepository _repository;
 
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   String? _errorMessage;
   List<CelestialObject> _items = const [];
+  String _search = '';
+  int _page = 1;
+  bool _hasMore = false;
+
+  static const int _limit = 20;
 
   bool get isLoading => _isLoading;
 
   String? get errorMessage => _errorMessage;
+
+  bool get isLoadingMore => _isLoadingMore;
+
+  bool get hasMore => _hasMore;
+
+  String get search => _search;
 
   List<CelestialObject> get items => List.unmodifiable(_items);
 
@@ -29,20 +41,56 @@ class CelestialObjectsModel extends ChangeNotifier {
     return null;
   }
 
-  Future<void> load() async {
+  Future<void> load({String? search}) async {
+    _search = search ?? _search;
+    _page = 1;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.fetchAll();
+    final result = await _repository.fetchAll(
+      page: _page,
+      limit: _limit,
+      search: _search,
+    );
     switch (result) {
       case Ok(value: final objects):
         _items = objects;
+        _hasMore = objects.length == _limit;
       case Err(msg: final message):
         _errorMessage = message;
+        _hasMore = false;
     }
 
     _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadMore() async {
+    if (_isLoadingMore || _isLoading || !_hasMore) {
+      return;
+    }
+
+    _isLoadingMore = true;
+    final nextPage = _page + 1;
+    final result = await _repository.fetchAll(
+      page: nextPage,
+      limit: _limit,
+      search: _search,
+    );
+
+    switch (result) {
+      case Ok(value: final objects):
+        _page = nextPage;
+        _items = [..._items, ...objects];
+        _hasMore = objects.length == _limit;
+        _errorMessage = null;
+      case Err(msg: final message):
+        _errorMessage = message;
+        _hasMore = false;
+    }
+
+    _isLoadingMore = false;
     notifyListeners();
   }
 

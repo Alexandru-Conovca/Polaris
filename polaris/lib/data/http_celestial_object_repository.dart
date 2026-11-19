@@ -35,13 +35,21 @@ class HttpCelestialObjectRepository implements CelestialObjectRepository {
   }
 
   @override
-  Future<Result<List<CelestialObject>>> fetchAll() async {
+  Future<Result<List<CelestialObject>>> fetchAll({
+    int page = 1,
+    int limit = 20,
+    String? search,
+  }) async {
     try {
+      final uri = Uri.parse('$baseUrl/celestial-objects').replace(
+        queryParameters: {
+          'page': '$page',
+          'limit': '$limit',
+          if (search != null && search.isNotEmpty) 'search': search,
+        },
+      );
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/celestial-objects'),
-            headers: await _headers(),
-          )
+          .get(uri, headers: await _headers())
           .timeout(_timeout);
 
       if (response.statusCode == 401) {

@@ -2,7 +2,11 @@ import 'celestial_object.dart';
 import 'result.dart';
 
 abstract class CelestialObjectRepository {
-  Future<Result<List<CelestialObject>>> fetchAll();
+  Future<Result<List<CelestialObject>>> fetchAll({
+    int page = 1,
+    int limit = 20,
+    String? search,
+  });
 
   Future<Result<CelestialObject>> fetchById(String id);
 

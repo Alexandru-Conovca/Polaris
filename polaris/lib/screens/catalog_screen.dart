@@ -9,8 +9,21 @@ import '../models/favorites_model.dart';
 import '../widgets/celestial_object_card.dart';
 import '../widgets/error_view.dart';
 
-class CatalogScreen extends StatelessWidget {
+class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
+
+  @override
+  State<CatalogScreen> createState() => _CatalogScreenState();
+}
+
+class _CatalogScreenState extends State<CatalogScreen> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,52 +57,114 @@ class CatalogScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: switch ((catalog.isLoading, catalog.errorMessage)) {
-        (true, _) => const Center(child: CircularProgressIndicator()),
-        (false, final String? errorMessage) when errorMessage != null => Center(
-          child: ErrorView(
-            message: errorMessage,
-            onRetry: () => context.read<CelestialObjectsModel>().load(),
-          ),
-        ),
-        _ => ListView(
-          children: [
-            ...catalog.items.map(
-              (object) => Dismissible(
-                key: ValueKey(object.id),
-                direction: DismissDirection.endToStart,
-                confirmDismiss: (_) => _confirmDelete(context, object.name),
-                onDismissed: (_) async {
-                  final error = await context
-                      .read<CelestialObjectsModel>()
-                      .remove(object.id);
-                  if (!context.mounted) {
-                    return;
-                  }
-                  if (error != null) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(error)));
-                    return;
-                  }
-                  context.read<FavoritesModel>().remove(object);
-                },
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 20),
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  child: const Icon(Icons.delete_outline),
-                ),
-                child: CelestialObjectCard(
-                  object: object,
-                  onTap: () {
-                    context.push('/catalog/objects/${object.id}');
-                  },
-                ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                labelText: 'Поиск объектов',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Очистить',
+                        onPressed: () {
+                          _searchController.clear();
+                          context.read<CelestialObjectsModel>().load(
+                            search: '',
+                          );
+                        },
+                        icon: const Icon(Icons.clear),
+                      ),
               ),
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (query) {
+                context.read<CelestialObjectsModel>().load(
+                  search: query.trim(),
+                );
+              },
             ),
-          ],
-        ),
-      },
+          ),
+          Expanded(
+            child: switch ((catalog.isLoading, catalog.errorMessage)) {
+              (true, _) => const Center(child: CircularProgressIndicator()),
+              (false, final String? errorMessage) when errorMessage != null =>
+                Center(
+                  child: ErrorView(
+                    message: errorMessage,
+                    onRetry: () => context.read<CelestialObjectsModel>().load(),
+                  ),
+                ),
+              _ =>
+                catalog.items.isEmpty
+                    ? const Center(child: Text('Объекты не найдены'))
+                    : ListView.builder(
+                        itemCount:
+                            catalog.items.length + (catalog.hasMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == catalog.items.length) {
+                            if (!catalog.isLoadingMore) {
+                              catalog.loadMore();
+                            }
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          final object = catalog.items[index];
+                          return Dismissible(
+                            key: ValueKey(object.id),
+                            direction: DismissDirection.endToStart,
+                            confirmDismiss: (_) =>
+                                _confirmDelete(context, object.name),
+                            onDismissed: (_) async {
+                              final error = await context
+                                  .read<CelestialObjectsModel>()
+                                  .remove(object.id);
+                              if (!context.mounted) {
+                                return;
+                              }
+                              if (error != null) {
+                                ScaffoldMessenger.of(
+                                  context,
+                                ).showSnackBar(SnackBar(content: Text(error)));
+                                return;
+                              }
+                              context.read<FavoritesModel>().remove(object);
+                            },
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .errorContainer,
+                              child: const Icon(Icons.delete_outline),
+                            ),
+                            child: CelestialObjectCard(
+                              object: object,
+                              onTap: () {
+                                context.push('/catalog/objects/${object.id}');
+                              },
+                            ),
+                          );
+                        },
+                      ),
+            },
+          ),
+        ],
+      ),
     );
   }
 
