@@ -16,13 +16,19 @@ import 'screens/verification_screen.dart';
 
 import 'widgets/app_shell.dart';
 
-final router = GoRouter(
-  initialLocation: '/login',
+late final GoRouter router;
+
+void initializeRouter({required bool loggedIn}) {
+  router = createRouter(loggedIn: loggedIn);
+}
+
+GoRouter createRouter({required bool loggedIn}) => GoRouter(
+  initialLocation: loggedIn ? '/' : '/login',
   routes: [
     GoRoute(
       path: '/login',
       builder: (context, state) {
-        return AuthScreen(onLogin: () => context.go('/'));
+        return const AuthScreen();
       },
     ),
     StatefulShellRoute.indexedStack(

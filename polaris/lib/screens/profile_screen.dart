@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../data/auth_api.dart';
 import '../data/app_data.dart';
 import '../data/mock_celestial_object_repository.dart';
 import '../widgets/observation_tile.dart';
@@ -35,6 +36,11 @@ Future<void> _logout(BuildContext context) async {
   );
 
   if (ok == true && context.mounted) {
+    final auth = context.read<AuthApi>();
+    await auth.logout();
+    if (!context.mounted) {
+      return;
+    }
     context.go('/login');
   }
 }

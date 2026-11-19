@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../data/auth_api.dart';
+import '../data/result.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, required this.onLogin});
-
-  final VoidCallback onLogin;
+  const AuthScreen({super.key});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -11,27 +14,63 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  final _loginController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+
+  bool _isRegister = false;
+  bool _busy = false;
 
   @override
   void dispose() {
-    _loginController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) {
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate() || _busy) {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Вход выполнен: ${_loginController.text.trim()}')),
-    );
+    setState(() {
+      _busy = true;
+    });
 
-    widget.onLogin();
+    final auth = context.read<AuthApi>();
+    final result = _isRegister
+        ? await auth.register(
+            _emailController.text.trim(),
+            _passwordController.text,
+            _nameController.text.trim(),
+          )
+        : await auth.login(
+            _emailController.text.trim(),
+            _passwordController.text,
+          );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _busy = false;
+    });
+
+    switch (result) {
+      case Ok():
+        context.go('/');
+      case Err(:final msg):
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
+  void _toggleMode() {
+    setState(() {
+      _isRegister = !_isRegister;
+    });
   }
 
   @override
@@ -53,7 +92,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     Icon(Icons.nights_stay, size: 54, color: scheme.primary),
                     const SizedBox(height: 24),
                     Text(
-                      'Welcome to Polaris',
+                      _isRegister
+                          ? 'Create your Polaris account'
+                          : 'Welcome to Polaris',
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 8),
@@ -63,12 +104,29 @@ class _AuthScreenState extends State<AuthScreen> {
                           ?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 36),
+                    if (_isRegister) ...[
+                      TextFormField(
+                        controller: _nameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Name',
+                          prefixIcon: Icon(Icons.badge_outlined),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Введите имя';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     TextFormField(
-                      controller: _loginController,
+                      controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
-                        labelText: 'Email or username',
+                        labelText: 'Email',
                         prefixIcon: Icon(Icons.person_outline),
                       ),
                       validator: (value) {
@@ -110,15 +168,29 @@ class _AuthScreenState extends State<AuthScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: _submit,
-                        icon: const Icon(Icons.arrow_forward),
-                        label: const Text('Войти'),
+                        onPressed: _busy ? null : _submit,
+                        icon: _busy
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.arrow_forward),
+                        label: Text(
+                          _isRegister ? 'Зарегистрироваться' : 'Войти',
+                        ),
                       ),
                     ),
                     Center(
                       child: TextButton(
-                        onPressed: () {},
-                        child: const Text('Нет аккаунта? Зарегистрируйтесь'),
+                        onPressed: _busy ? null : _toggleMode,
+                        child: Text(
+                          _isRegister
+                              ? 'Уже есть аккаунт? Войти'
+                              : 'Нет аккаунта? Зарегистрируйтесь',
+                        ),
                       ),
                     ),
                   ],

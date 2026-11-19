@@ -1,21 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'data/auth_api.dart';
 import 'data/celestial_object_repository.dart';
 import 'data/mock_celestial_object_repository.dart';
 import 'data/mock_telescope_repository.dart';
 import 'data/telescope_repository.dart';
+import 'data/token_store.dart';
 import 'models/celestial_objects_model.dart';
 import 'models/favorites_model.dart';
 import 'models/telescope_model.dart';
-import 'router.dart';
+import 'router.dart' as app_router;
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final tokens = TokenStore();
+  final loggedIn = await tokens.read() != null;
+  final auth = AuthApi('http://localhost:8080', tokens);
+  app_router.initializeRouter(loggedIn: loggedIn);
   final repository = MockCelestialObjectRepository();
 
   runApp(
     MultiProvider(
       providers: [
+        Provider<TokenStore>.value(value: tokens),
+        Provider<AuthApi>.value(value: auth),
         Provider<MockCelestialObjectRepository>.value(value: repository),
         Provider<CelestialObjectRepository>.value(value: repository),
         Provider<TelescopeRepository>(create: (_) => MockTelescopeRepository()),
@@ -28,20 +39,22 @@ void main() {
         ),
         ChangeNotifierProvider(create: (_) => FavoritesModel()),
       ],
-      child: const Polaris(),
+      child: Polaris(routerConfig: app_router.router),
     ),
   );
 }
 
 class Polaris extends StatelessWidget {
-  const Polaris({super.key});
+  const Polaris({super.key, required this.routerConfig});
+
+  final GoRouter routerConfig;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Polaris',
       theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
-      routerConfig: router,
+      routerConfig: routerConfig,
     );
   }
 }
