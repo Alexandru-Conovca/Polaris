@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import 'data/auth_api.dart';
 import 'data/celestial_object_repository.dart';
 import 'data/http_celestial_object_repository.dart';
-import 'data/mock_telescope_repository.dart';
 import 'data/telescope_repository.dart';
+import 'data/http_telescope_repository.dart';
 import 'data/token_store.dart';
 import 'models/celestial_objects_model.dart';
 import 'models/favorites_model.dart';
@@ -43,6 +43,16 @@ Future<void> main() async {
       }
     },
   );
+  final telescopeRepository = HttpTelescopeRepository(
+    apiBase,
+    tokens,
+    onUnauthorized: () {
+      final uri = app_router.router.routeInformationProvider.value.uri;
+      if (uri.path != '/login') {
+        app_router.router.go('/login');
+      }
+    },
+  );
 
   runApp(
     MultiProvider(
@@ -50,7 +60,7 @@ Future<void> main() async {
         Provider<TokenStore>.value(value: tokens),
         Provider<AuthApi>.value(value: auth),
         Provider<CelestialObjectRepository>.value(value: repository),
-        Provider<TelescopeRepository>(create: (_) => MockTelescopeRepository()),
+        Provider<TelescopeRepository>.value(value: telescopeRepository),
         ChangeNotifierProvider(
           create: (_) => CelestialObjectsModel(repository)..load(),
         ),

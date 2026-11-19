@@ -61,6 +61,21 @@ class Telescope {
   final int focalLength;
   final String mountType;
 
+  factory Telescope.fromJson(Map<String, dynamic> json) => Telescope(
+    id: '${json['id']}',
+    name: json['name'] as String,
+    aperture: (json['aperture'] as num).toInt(),
+    focalLength: (json['focalLength'] as num).toInt(),
+    mountType: json['mountType'] as String,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'aperture': aperture,
+    'focalLength': focalLength,
+    'mountType': mountType,
+  };
+
   Telescope copyWith({int? aperture, int? focalLength, String? mountType}) =>
       Telescope(
         id: id,
