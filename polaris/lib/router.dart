@@ -9,6 +9,12 @@ import 'screens/home_screen.dart';
 import 'screens/object_detail_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/quest_screen.dart';
+import 'screens/quest_session_screen.dart';
+
+import 'package:provider/provider.dart';
+
+import 'data/file_api.dart';
+import 'models/quest_session_model.dart';
 import 'screens/star_map_screen.dart';
 import 'screens/statistics_screen.dart';
 import 'screens/telescope_screen.dart';
@@ -73,6 +79,23 @@ GoRouter createRouter({required bool loggedIn}) => GoRouter(
               builder: (context, state) {
                 return QuestScreen(quest: quests[1]);
               },
+              routes: [
+                GoRoute(
+                  path: 'session/:questId',
+                  builder: (context, state) {
+                    final questId = state.pathParameters['questId']!;
+                    final quest = quests.firstWhere(
+                      (item) => item.id == questId,
+                      orElse: () => quests.first,
+                    );
+                    return ChangeNotifierProvider(
+                      create: (context) =>
+                          QuestSessionModel(context.read<FileApi>(), quest),
+                      child: const QuestSessionScreen(),
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),

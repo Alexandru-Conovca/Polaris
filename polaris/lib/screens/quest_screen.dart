@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../data/app_data.dart';
 import '../models/domain_models.dart';
@@ -49,9 +50,10 @@ class QuestScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: () {},
+            onPressed: () =>
+                context.push('/quests/session/${selectedQuest.id}'),
             icon: const Icon(Icons.play_arrow),
-            label: const Text('Start observation'),
+            label: const Text('Begin quest session'),
           ),
         ],
       ),
