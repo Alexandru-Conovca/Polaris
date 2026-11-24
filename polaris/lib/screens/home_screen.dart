@@ -16,7 +16,7 @@ class HomeScreen extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Good evening, Alexandru'),
+        title: const Text('Good evening'),
         actions: [
           IconButton(
             onPressed: () {},

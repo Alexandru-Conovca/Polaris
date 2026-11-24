@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../data/auth_api.dart';
 import '../data/app_data.dart';
+import '../data/result.dart';
 import '../widgets/observation_tile.dart';
 import '../widgets/quest_card.dart';
 
@@ -52,9 +53,51 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  String _name = 'Загрузка...';
+  String _email = '';
+  String _level = 'Amateur Stargazer';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUser();
+    });
+  }
+
+  Future<void> _loadUser() async {
+    final result = await context.read<AuthApi>().fetchMe();
+    if (!mounted) {
+      return;
+    }
+    switch (result) {
+      case Ok(value: final user):
+        setState(() {
+          _name = user.name;
+          _email = user.email;
+          _level = user.level;
+        });
+      case Err(msg: final message):
+        setState(() {
+          _name = 'Пользователь';
+          _email = '';
+        });
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final initials = _name.trim().isEmpty
+        ? '?'
+        : _name
+              .trim()
+              .split(RegExp(r'\s+'))
+              .take(2)
+              .map((part) => part.isEmpty ? '' : part[0].toUpperCase())
+              .join();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your profile'),
@@ -75,21 +118,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 radius: 32,
                 backgroundColor: scheme.primaryContainer,
                 foregroundColor: scheme.onPrimaryContainer,
-                child: const Text(
-                  'AC',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                child: Text(
+                  initials,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(width: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(_name, style: Theme.of(context).textTheme.headlineSmall),
                   Text(
-                    currentUser.name,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  Text(
-                    currentUser.level,
+                    _email.isEmpty ? _level : _email,
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: scheme.onSurfaceVariant),
                   ),

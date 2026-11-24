@@ -1,11 +1,5 @@
 import '../models/domain_models.dart';
 
-const currentUser = User(
-  name: 'Alexandru',
-  email: 'alexandru@polaris.app',
-  level: 'Amateur Stargazer',
-);
-
 const quests = [
   Quest(
     id: 'solar',
