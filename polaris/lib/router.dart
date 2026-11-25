@@ -24,12 +24,12 @@ import 'widgets/app_shell.dart';
 
 late final GoRouter router;
 
-void initializeRouter({required bool loggedIn}) {
-  router = createRouter(loggedIn: loggedIn);
+void initializeRouter() {
+  router = createRouter();
 }
 
-GoRouter createRouter({required bool loggedIn}) => GoRouter(
-  initialLocation: loggedIn ? '/' : '/login',
+GoRouter createRouter() => GoRouter(
+  initialLocation: '/',
   routes: [
     GoRoute(
       path: '/login',
@@ -47,7 +47,7 @@ GoRouter createRouter({required bool loggedIn}) => GoRouter(
             GoRoute(
               path: '/',
               builder: (context, state) {
-                return HomeScreen(onQuest: () => context.go('/quests'));
+                return const HomeScreen();
               },
             ),
           ],

@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import '../data/app_data.dart';
-import '../widgets/observation_tile.dart';
+import '../models/auth_model.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Observation history')),
-    body: ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: observations.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, index) =>
-          ObservationTile(observation: observations[index]),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final isAuthenticated = context.watch<AuthModel>().isAuthenticated;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Observation history')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: isAuthenticated
+              ? const Text(
+                  'История наблюдений пока не подключена.',
+                  textAlign: TextAlign.center,
+                )
+              : FilledButton(
+                  onPressed: () => context.go('/login'),
+                  child: const Text('Войдите, чтобы открыть историю'),
+                ),
+        ),
+      ),
+    );
+  }
 }

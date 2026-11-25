@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../data/auth_api.dart';
 import '../data/result.dart';
+import '../models/auth_model.dart';
+import '../models/celestial_objects_model.dart';
+import '../models/telescope_model.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -60,6 +65,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
     switch (result) {
       case Ok():
+        context.read<AuthModel>().setAuthenticated(true);
+        unawaited(context.read<CelestialObjectsModel>().load());
+        unawaited(context.read<TelescopeModel>().load('sw'));
         context.go('/');
       case Err(:final msg):
         ScaffoldMessenger.of(context)
@@ -191,6 +199,13 @@ class _AuthScreenState extends State<AuthScreen> {
                               ? 'Уже есть аккаунт? Войти'
                               : 'Нет аккаунта? Зарегистрируйтесь',
                         ),
+                      ),
+                    ),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: _busy ? null : () => context.go('/'),
+                        icon: const Icon(Icons.explore_outlined),
+                        label: const Text('Продолжить без аккаунта'),
                       ),
                     ),
                   ],

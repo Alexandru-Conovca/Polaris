@@ -70,7 +70,7 @@ def _read_body(body: dict) -> tuple:
 
 
 @router.get("/celestial-objects")
-async def list_objects(request: Request, user_id: int = Depends(require_auth)):
+async def list_objects(request: Request):
     page, limit, search = pagination(request)
     pattern = "%" + search + "%"
     where = "name LIKE ? OR type LIKE ? OR constellation LIKE ?"
@@ -104,7 +104,7 @@ async def create_object(request: Request, user_id: int = Depends(require_auth)):
 
 
 @router.get("/celestial-objects/{object_id}")
-async def get_object(object_id: str, user_id: int = Depends(require_auth)):
+async def get_object(object_id: str):
     row = _find(object_id)
     if row is None:
         raise not_found("Celestial object not found")

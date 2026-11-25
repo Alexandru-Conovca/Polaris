@@ -51,11 +51,6 @@ class QuestCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text('${quest.tasksCount} tasks'),
                   const Spacer(),
-                  Text(
-                    quest.createdAt,
-                    style: Theme.of(context).textTheme.labelMedium
-                        ?.copyWith(color: scheme.outline),
-                  ),
                 ],
               ),
             ],

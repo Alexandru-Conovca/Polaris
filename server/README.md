@@ -93,8 +93,10 @@ Pe lângă `notes`, backend-ul include entitățile tematice:
 - `/observations` — observații legate de obiect, quest și opțional telescop.
 - `/favorites` — legătura many-to-many dintre utilizatori și obiecte cerești.
 
-Toate rutele tematice cer același `Authorization: Bearer <token>` ca
-`/notes`. Obiectele cerești și quest-urile sunt comune; telescoapele,
-observațiile și favoritele sunt izolate pe utilizator. `app.db` trebuie șters
-manual când se modifică coloanele unei tabele, deoarece proiectul folosește
-`CREATE TABLE IF NOT EXISTS`, nu migrații.
+Citirea catalogului comun (`GET /celestial-objects` și
+`GET /celestial-objects/{id}`) este publică pentru navigarea în mod guest.
+Scrierea în catalog și celelalte rute protejate cer același
+`Authorization: Bearer <token>` ca `/notes`. Obiectele cerești și quest-urile
+sunt comune; telescoapele, observațiile și favoritele sunt izolate pe
+utilizator. `app.db` trebuie șters manual când se modifică coloanele unei
+tabele, deoarece proiectul folosește `CREATE TABLE IF NOT EXISTS`, nu migrații.

@@ -13,6 +13,9 @@ import 'data/token_store.dart';
 import 'models/celestial_objects_model.dart';
 import 'models/favorites_model.dart';
 import 'models/telescope_model.dart';
+import 'models/auth_model.dart';
+import 'models/theme_model.dart';
+import 'models/weather_model.dart';
 import 'router.dart' as app_router;
 
 Future<void> main() async {
@@ -20,12 +23,14 @@ Future<void> main() async {
 
   final tokens = TokenStore();
   final loggedIn = await tokens.read() != null;
+  final authModel = AuthModel(authenticated: loggedIn);
   final auth = AuthApi(apiBase, tokens);
-  app_router.initializeRouter(loggedIn: loggedIn);
+  app_router.initializeRouter();
   final repository = HttpCelestialObjectRepository(
     apiBase,
     tokens,
     onUnauthorized: () {
+      authModel.setAuthenticated(false);
       final uri = app_router.router.routeInformationProvider.value.uri;
       if (uri.path != '/login') {
         app_router.router.go('/login');
@@ -36,6 +41,7 @@ Future<void> main() async {
     apiBase,
     tokens,
     onUnauthorized: () {
+      authModel.setAuthenticated(false);
       final uri = app_router.router.routeInformationProvider.value.uri;
       if (uri.path != '/login') {
         app_router.router.go('/login');
@@ -46,6 +52,7 @@ Future<void> main() async {
     apiBase,
     tokens,
     onUnauthorized: () {
+      authModel.setAuthenticated(false);
       final uri = app_router.router.routeInformationProvider.value.uri;
       if (uri.path != '/login') {
         app_router.router.go('/login');
@@ -56,19 +63,33 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider<AuthModel>.value(value: authModel),
         Provider<TokenStore>.value(value: tokens),
         Provider<AuthApi>.value(value: auth),
         Provider<FileApi>.value(value: fileApi),
         Provider<CelestialObjectRepository>.value(value: repository),
         Provider<TelescopeRepository>.value(value: telescopeRepository),
         ChangeNotifierProvider(
-          create: (_) => CelestialObjectsModel(repository)..load(),
+          create: (_) {
+            final model = CelestialObjectsModel(repository);
+            if (loggedIn) {
+              model.load();
+            }
+            return model;
+          },
         ),
         ChangeNotifierProvider(
-          create: (context) =>
-              TelescopeModel(context.read<TelescopeRepository>())..load('sw'),
+          create: (context) {
+            final model = TelescopeModel(context.read<TelescopeRepository>());
+            if (loggedIn) {
+              model.load('sw');
+            }
+            return model;
+          },
         ),
         ChangeNotifierProvider(create: (_) => FavoritesModel()),
+        ChangeNotifierProvider(create: (_) => WeatherModel()..load()),
+        ChangeNotifierProvider(create: (_) => ThemeModel()..load()),
       ],
       child: Polaris(routerConfig: app_router.router),
     ),
@@ -82,9 +103,15 @@ class Polaris extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final redNightMode = context.watch<ThemeModel>().isRedNightMode;
     return MaterialApp.router(
       title: 'Polaris',
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: redNightMode ? const Color(0xFF9B0000) : Colors.deepPurple,
+          brightness: redNightMode ? Brightness.dark : Brightness.light,
+        ),
+      ),
       routerConfig: routerConfig,
     );
   }

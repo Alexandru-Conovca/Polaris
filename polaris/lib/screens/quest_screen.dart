@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../data/app_data.dart';
 import '../models/domain_models.dart';
 import '../widgets/quest_card.dart';
-import '../widgets/stat_badge.dart';
 
 class QuestScreen extends StatelessWidget {
   const QuestScreen({super.key, this.quest});
@@ -42,9 +41,7 @@ class QuestScreen extends StatelessWidget {
                   child: Text('${entry.key + 1}'),
                 ),
                 title: Text(entry.value),
-                trailing: entry.key == 0
-                    ? StatBadge(label: 'Ready', color: scheme.tertiary)
-                    : const Icon(Icons.radio_button_unchecked),
+                trailing: const Icon(Icons.radio_button_unchecked),
               ),
             ),
           ),

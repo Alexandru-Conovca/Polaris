@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../data/astronomy_service.dart';
 import '../data/celestial_object.dart';
+import '../models/auth_model.dart';
 import '../models/celestial_objects_model.dart';
-import '../models/domain_models.dart';
 import '../models/favorites_model.dart';
+import '../models/weather_model.dart';
 import '../widgets/error_view.dart';
 import '../widgets/stat_badge.dart';
 
@@ -16,6 +18,18 @@ class ObjectDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!context.watch<AuthModel>().isAuthenticated) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Object')),
+        body: Center(
+          child: FilledButton(
+            onPressed: () => context.go('/login'),
+            child: const Text('Войдите, чтобы открыть объект'),
+          ),
+        ),
+      );
+    }
+
     final model = context.watch<CelestialObjectsModel>();
     final object = model.byId(id);
 
@@ -49,23 +63,36 @@ class _ObjectDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final favorites = context.watch<FavoritesModel>();
+    final isAuthenticated = context.watch<AuthModel>().isAuthenticated;
+    final location = context.watch<WeatherModel>().location;
+    final position = location == null
+        ? null
+        : const AstronomyService().positionFor(
+            object: object,
+            location: location,
+          );
     final isFavorite = favorites.contains(object);
     final scheme = Theme.of(context).colorScheme;
+    final visibilityLabel = location == null
+        ? 'Укажите точку'
+        : position?.statusLabel ?? 'Нет RA/Dec';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(object.name),
         actions: [
-          IconButton(
-            onPressed: () => _editObject(context, object),
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Изменить',
-          ),
-          IconButton(
-            onPressed: () => _deleteObject(context, object),
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Удалить',
-          ),
+          if (isAuthenticated) ...[
+            IconButton(
+              onPressed: () => _editObject(context, object),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Изменить',
+            ),
+            IconButton(
+              onPressed: () => _deleteObject(context, object),
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Удалить',
+            ),
+          ],
         ],
       ),
       body: ListView(
@@ -89,8 +116,10 @@ class _ObjectDetails extends StatelessWidget {
                 ),
               ),
               StatBadge(
-                label: object.isVisibleNow ? 'Visible now' : 'Not visible',
-                color: object.isVisibleNow ? scheme.tertiary : scheme.outline,
+                label: visibilityLabel,
+                color: position?.isVisibleNow == true
+                    ? scheme.tertiary
+                    : scheme.outline,
               ),
             ],
           ),
@@ -109,14 +138,24 @@ class _ObjectDetails extends StatelessWidget {
                 label: 'Magnitude',
                 value: object.magnitude.toStringAsFixed(1),
               ),
-              _Parameter(
-                label: 'Distance',
-                value: object.type == CelestialType.galaxy
-                    ? '2.5 Mly'
-                    : 'Variable',
-              ),
               _Parameter(label: 'Coordinates', value: object.coordinates),
               _Parameter(label: 'Constellation', value: object.constellation),
+              _Parameter(
+                label: 'Оценка яркости',
+                value: const AstronomyService().brightnessHint(
+                  object.magnitude,
+                ),
+              ),
+              if (position != null) ...[
+                _Parameter(
+                  label: 'Высота над горизонтом',
+                  value: '${position.altitudeDegrees.toStringAsFixed(1)}°',
+                ),
+                _Parameter(
+                  label: 'Азимут',
+                  value: '${position.azimuthDegrees.toStringAsFixed(1)}°',
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 24),
@@ -124,9 +163,9 @@ class _ObjectDetails extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.add),
-                  label: const Text('Добавить в квест'),
+                  onPressed: () => context.push('/quests/session/solar'),
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Начать наблюдение'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -160,15 +199,31 @@ class _ObjectDetails extends StatelessWidget {
   }
 
   Future<void> _editObject(BuildContext context, CelestialObject object) async {
-    final controller = TextEditingController(text: object.name);
-    final name = await showDialog<String>(
+    final nameController = TextEditingController(text: object.name);
+    final coordinatesController = TextEditingController(
+      text: object.coordinates,
+    );
+    final values = await showDialog<Map<String, String>>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Изменить объект'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Название'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Название'),
+            ),
+            TextField(
+              controller: coordinatesController,
+              decoration: const InputDecoration(
+                labelText: 'Экваториальные координаты',
+                helperText: 'Формат RA 18h 36m 56s, Dec +38° 47′ 01″',
+              ),
+              maxLines: 2,
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -176,22 +231,28 @@ class _ObjectDetails extends StatelessWidget {
             child: const Text('Отмена'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
+            onPressed: () => Navigator.pop(dialogContext, {
+              'name': nameController.text.trim(),
+              'coordinates': coordinatesController.text.trim(),
+            }),
             child: const Text('Сохранить'),
           ),
         ],
       ),
     );
-    controller.dispose();
+    nameController.dispose();
+    coordinatesController.dispose();
 
+    final name = values?['name'];
     if (name == null || name.isEmpty || !context.mounted) {
       return;
     }
 
-    final error = await context.read<CelestialObjectsModel>().update(
-      object.copyWith(name: name),
+    final updated = object.copyWith(
+      name: name,
+      coordinates: values!['coordinates']!,
     );
+    final error = await context.read<CelestialObjectsModel>().update(updated);
     if (!context.mounted) {
       return;
     }
@@ -200,7 +261,7 @@ class _ObjectDetails extends StatelessWidget {
           .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
-    context.read<FavoritesModel>().update(object.copyWith(name: name));
+    context.read<FavoritesModel>().update(updated);
   }
 
   Future<void> _deleteObject(

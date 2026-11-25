@@ -3,11 +3,10 @@ enum CelestialType { planet, galaxy, nebula, star }
 enum QuestDifficulty { beginner, intermediate, advanced }
 
 class User {
-  const User({required this.name, required this.email, required this.level});
+  const User({required this.name, required this.email});
 
   final String name;
   final String email;
-  final String level;
 }
 
 class Quest {
@@ -17,7 +16,6 @@ class Quest {
     required this.description,
     required this.difficulty,
     required this.tasksCount,
-    required this.createdAt,
   });
 
   final String id;
@@ -25,25 +23,6 @@ class Quest {
   final String description;
   final QuestDifficulty difficulty;
   final int tasksCount;
-  final String createdAt;
-}
-
-class Observation {
-  const Observation({
-    required this.id,
-    required this.objectName,
-    required this.dateTime,
-    required this.location,
-    required this.status,
-    required this.questTitle,
-  });
-
-  final String id;
-  final String objectName;
-  final String dateTime;
-  final String location;
-  final String status;
-  final String questTitle;
 }
 
 class Telescope {

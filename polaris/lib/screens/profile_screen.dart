@@ -3,10 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../data/auth_api.dart';
-import '../data/app_data.dart';
 import '../data/result.dart';
-import '../widgets/observation_tile.dart';
-import '../widgets/quest_card.dart';
+import '../models/auth_model.dart';
+import '../models/theme_model.dart';
+import '../widgets/observation_conditions_card.dart';
 
 Future<void> _logout(BuildContext context) async {
   final ok = await showDialog<bool>(
@@ -41,7 +41,8 @@ Future<void> _logout(BuildContext context) async {
     if (!context.mounted) {
       return;
     }
-    context.go('/login');
+    context.read<AuthModel>().setAuthenticated(false);
+    context.go('/');
   }
 }
 
@@ -55,14 +56,33 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String _name = 'Загрузка...';
   String _email = '';
-  String _level = 'Amateur Stargazer';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadUser();
+      if (context.read<AuthModel>().isAuthenticated) {
+        _loadUser();
+      } else if (mounted) {
+        setState(() {
+          _name = 'Гость';
+        });
+      }
     });
+  }
+
+  Future<void> _setNightMode(bool enabled) async {
+    final result = await context.read<ThemeModel>().setRedNightMode(enabled);
+    if (!mounted) {
+      return;
+    }
+    switch (result) {
+      case Ok():
+        return;
+      case Err(msg: final message):
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
   Future<void> _loadUser() async {
@@ -70,16 +90,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) {
       return;
     }
+
     switch (result) {
       case Ok(value: final user):
         setState(() {
           _name = user.name;
           _email = user.email;
-          _level = user.level;
         });
       case Err(msg: final message):
+        final expired = message == 'Сессия истекла';
+        if (expired) {
+          context.read<AuthModel>().setAuthenticated(false);
+        }
         setState(() {
-          _name = 'Пользователь';
+          _name = expired ? 'Гость' : 'Пользователь';
           _email = '';
         });
         ScaffoldMessenger.of(context)
@@ -90,9 +114,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final initials = _name.trim().isEmpty
+    final isAuthenticated = context.watch<AuthModel>().isAuthenticated;
+    final displayName = isAuthenticated ? _name : 'Гость';
+    final initials = displayName.trim().isEmpty
         ? '?'
-        : _name
+        : displayName
               .trim()
               .split(RegExp(r'\s+'))
               .take(2)
@@ -103,9 +129,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Your profile'),
         actions: [
           IconButton(
-            tooltip: 'Выйти из аккаунта',
-            onPressed: () => _logout(context),
-            icon: const Icon(Icons.logout),
+            tooltip: isAuthenticated ? 'Выйти из аккаунта' : 'Войти',
+            onPressed: isAuthenticated
+                ? () => _logout(context)
+                : () => context.go('/login'),
+            icon: Icon(isAuthenticated ? Icons.logout : Icons.login),
           ),
         ],
       ),
@@ -127,71 +155,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_name, style: Theme.of(context).textTheme.headlineSmall),
                   Text(
-                    _email.isEmpty ? _level : _email,
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: scheme.onSurfaceVariant),
+                    displayName,
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
+                  if (isAuthenticated && _email.isNotEmpty)
+                    Text(
+                      _email,
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              _Metric(value: '12', label: 'Quests completed'),
-              _Metric(value: '34', label: 'Objects observed'),
-              _Metric(value: '7', label: 'Level'),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('Настройки телескопа'),
-              subtitle: const Text(
-                'Аппертурa, фокусное расстояние и монтировка',
+          const SizedBox(height: 16),
+          const ObservationConditionsCard(),
+          const SizedBox(height: 12),
+          Consumer<ThemeModel>(
+            builder: (context, theme, child) => Card(
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(Icons.nightlight_round),
+                    title: const Text('Астрономический ночной режим'),
+                    subtitle: Text(
+                      theme.isRedNightMode
+                          ? 'Тёмно-красная тема включена'
+                          : 'Сохраняет адаптацию зрения в темноте',
+                    ),
+                    value: theme.isRedNightMode,
+                    onChanged: _setNightMode,
+                  ),
+                  if (theme.errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Text(
+                        theme.errorMessage!,
+                        style: TextStyle(color: scheme.error),
+                      ),
+                    ),
+                ],
               ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.push('/profile/telescope'),
             ),
           ),
-          const SizedBox(height: 12),
-          Text('Current quest', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 10),
-          QuestCard(quest: quests[1]),
-          const SizedBox(height: 24),
-          Text(
-            'Recent activity',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 10),
-          ...observations
-              .take(2)
-              .map((observation) => ObservationTile(observation: observation)),
+          if (!isAuthenticated) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.cloud_sync_outlined),
+                title: const Text('Синхронизируйте наблюдения'),
+                subtitle: const Text(
+                  'Войдите, чтобы загружать подтверждения и работать с аккаунтом.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go('/login'),
+              ),
+            ),
+          ],
+          if (isAuthenticated) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Настройки телескопа'),
+                subtitle: const Text(
+                  'Аппертурa, фокусное расстояние и монтировка',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/profile/telescope'),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.value, required this.label});
-  final String value;
-  final String label;
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: Column(
-      children: [
-        Text(value, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
-      ],
-    ),
-  );
 }

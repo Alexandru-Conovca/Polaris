@@ -1,15 +1,35 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../data/api_config.dart';
 import '../data/result.dart';
+import '../models/auth_model.dart';
 import '../models/quest_session_model.dart';
+import '../widgets/observation_conditions_card.dart';
 
 class QuestSessionScreen extends StatelessWidget {
   const QuestSessionScreen({super.key});
 
   Future<void> _pickAndUpload(BuildContext context) async {
+    if (!context.read<AuthModel>().isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Для загрузки фото войдите в аккаунт.'),
+          action: SnackBarAction(
+            label: 'Войти',
+            onPressed: () {
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
     final files = await FilePicker.pickFiles(type: FileType.image);
     if (files.isEmpty || !context.mounted) {
       return;
@@ -91,27 +111,11 @@ class QuestSessionScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Observation conditions',
+            'Погодные условия и точка наблюдения',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Sky: clear'),
-                  SizedBox(height: 4),
-                  Text('Visibility: good'),
-                  SizedBox(height: 4),
-                  Text('Temperature: 12 °C'),
-                  SizedBox(height: 4),
-                  Text('Wind: 8 km/h'),
-                ],
-              ),
-            ),
-          ),
+          const ObservationConditionsCard(),
           const SizedBox(height: 16),
           Text(
             'Mission checklist',
@@ -200,7 +204,7 @@ class QuestSessionScreen extends StatelessWidget {
                         content: Text(
                           completed
                               ? 'Квест выполнен и прогресс сохранён'
-                              : 'Прогресс сохранён',
+                              : 'Прогресс сохранён локально',
                         ),
                       ),
                     );

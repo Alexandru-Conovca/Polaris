@@ -1,148 +1,98 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../data/astronomy_service.dart';
+import '../models/auth_model.dart';
 import '../models/celestial_objects_model.dart';
+import '../models/weather_model.dart';
 import '../widgets/celestial_object_card.dart';
 import '../widgets/error_view.dart';
+import '../widgets/observation_conditions_card.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.onQuest});
-
-  final VoidCallback onQuest;
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final isAuthenticated = context.watch<AuthModel>().isAuthenticated;
     final catalog = context.watch<CelestialObjectsModel>();
-    final scheme = Theme.of(context).colorScheme;
+    final location = context.watch<WeatherModel>().location;
+    final astronomy = const AstronomyService();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Good evening'),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Polaris')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           Text(
-            'Tonight in the sky',
+            'Условия наблюдения',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.wb_sunny_outlined, color: scheme.tertiary),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Clear conditions',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '21:42',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    '47.0101° N, 28.8638° E',
+          const ObservationConditionsCard(),
+          if (isAuthenticated) ...[
+            const SizedBox(height: 28),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Объекты из каталога',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Clear Sky\nHumidity 45%',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      Text(
-                        'Seeing\n4 / 5',
-                        textAlign: TextAlign.right,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+                TextButton(
+                  onPressed: () => context.go('/catalog'),
+                  child: const Text('View all'),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 28),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Recommended tonight',
-                  style: Theme.of(context).textTheme.titleLarge,
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 170,
+              child: switch ((catalog.isLoading, catalog.errorMessage)) {
+                (true, _) => const Center(child: CircularProgressIndicator()),
+                (false, final String? errorMessage) when errorMessage != null =>
+                  ErrorView(
+                    message: errorMessage,
+                    onRetry: () => context.read<CelestialObjectsModel>().load(),
+                  ),
+                (false, _) when catalog.items.isEmpty => const Center(
+                  child: Text('В каталоге пока нет объектов.'),
                 ),
-              ),
-              TextButton(onPressed: () {}, child: const Text('View all')),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 170,
-            child: switch ((catalog.isLoading, catalog.errorMessage)) {
-              (true, _) => const Center(child: CircularProgressIndicator()),
-              (false, final String? errorMessage) when errorMessage != null =>
-                ErrorView(
-                  message: errorMessage,
-                  onRetry: () => context.read<CelestialObjectsModel>().load(),
-                ),
-              _ => ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: catalog.items.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (_, index) => SizedBox(
-                  width: 260,
-                  child: CelestialObjectCard(object: catalog.items[index]),
-                ),
-              ),
-            },
-          ),
-          const SizedBox(height: 28),
-          Card(
-            color: scheme.primaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Plan a new adventure',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: scheme.onPrimaryContainer),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Let Polaris pick a challenge for tonight.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: scheme.onPrimaryContainer),
-                        ),
-                      ],
+                _ => ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: catalog.items.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (_, index) => SizedBox(
+                    width: 260,
+                    child: CelestialObjectCard(
+                      object: catalog.items[index],
+                      hasLocation: location != null,
+                      position: location == null
+                          ? null
+                          : astronomy.positionFor(
+                              object: catalog.items[index],
+                              location: location,
+                            ),
                     ),
                   ),
-                  FilledButton(
-                    onPressed: onQuest,
-                    child: const Text('Generate quest'),
-                  ),
-                ],
+                ),
+              },
+            ),
+          ] else ...[
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.lock_outline),
+                title: const Text('Каталог доступен после входа'),
+                subtitle: const Text(
+                  'Войдите, чтобы загрузить каталог и рекомендации.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go('/login'),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

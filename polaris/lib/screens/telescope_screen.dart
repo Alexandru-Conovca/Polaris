@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../models/telescope_model.dart';
+import '../models/auth_model.dart';
 
 class TelescopeScreen extends StatefulWidget {
   const TelescopeScreen({super.key});
@@ -60,6 +61,18 @@ class _TelescopeScreenState extends State<TelescopeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!context.watch<AuthModel>().isAuthenticated) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Telescope setup')),
+        body: Center(
+          child: FilledButton(
+            onPressed: () => context.go('/login'),
+            child: const Text('Войдите, чтобы открыть настройки'),
+          ),
+        ),
+      );
+    }
+
     final telescope = context.watch<TelescopeModel>().telescope;
     if (telescope == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));

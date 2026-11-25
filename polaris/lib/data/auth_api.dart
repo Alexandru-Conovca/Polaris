@@ -51,11 +51,7 @@ class AuthApi {
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return Ok(
-        User(
-          name: data['name'] as String,
-          email: data['email'] as String,
-          level: 'Amateur Stargazer',
-        ),
+        User(name: data['name'] as String, email: data['email'] as String),
       );
     } on SocketException {
       return const Err('Нет сети — повторите попытку');
